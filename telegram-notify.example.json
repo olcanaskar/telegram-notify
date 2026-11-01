@@ -1,0 +1,13 @@
+{
+  "botToken": "123456789:AAExampleTokenFromBotFather",
+  "chatId": "123456789",
+  "debug": false,
+  "notify": {
+    "input": true,
+    "done": true,
+    "error": true
+  },
+  "inbound": {
+    "enabled": true
+  }
+}

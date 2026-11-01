@@ -1,0 +1,37 @@
+{
+  "name": "telegram-notify",
+  "version": "0.1.0",
+  "description": "Two-way Telegram bridge for OpenCode: forward turn results, questions and errors to Telegram, and reply from Telegram to keep the session going.",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "telegram",
+    "notifications",
+    "bot",
+    "bridge"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Olcan Askar"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olcanaskar/telegram-notify.git"
+  },
+  "homepage": "https://github.com/olcanaskar/telegram-notify#readme",
+  "bugs": {
+    "url": "https://github.com/olcanaskar/telegram-notify/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@opencode/plugin": "^2.2.3"
+  }
+}

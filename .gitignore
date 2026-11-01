@@ -1,0 +1,14 @@
+node_modules/
+*.log
+
+# Local configuration and runtime state - never commit these (they hold the bot
+# token and your chat id). telegram-notify.example.json is the template.
+telegram-notify.json
+telegram-notify-offset.json
+telegram-notify-debug.log
+telegram-notify-seen/
+telegram-notify-routes/
+telegram-notify-last/
+
+.DS_Store
+Thumbs.db
