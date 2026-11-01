@@ -62,14 +62,14 @@ const LOCK_STALE_MS = 90 * 1000
 const HELP_TEXT = [
   "📖 <b>OpenCode ↔ Telegram</b>",
   "",
-  "• Normal mesaj → son aktif oturuma prompt olarak iletilir.",
-  "• Bir bildirime <b>yanıt</b> → o bildirimin oturumuna gider.",
-  "• /stop → çalışan turu durdurur.",
-  "• /id → bu sohbetin kimliği.",
-  "• /help → bu mesaj.",
+  "• A normal message → becomes a prompt for the most recent session.",
+  "• A <b>reply</b> to a notification → goes to that notification's session.",
+  "• /stop → interrupts the running turn.",
+  "• /id → this chat's id.",
+  "• /help → this message.",
   "",
-  "Not: onay (permission) ve soru bildirimleri buradan yanıtlanamaz;",
-  "OpenCode arayüzünde cevaplanmalıdır.",
+  "Note: permission and question notifications cannot be answered here;",
+  "they must be answered in the OpenCode UI.",
 ].join("\n")
 
 type Flags = { input: boolean; done: boolean; error: boolean }
@@ -450,35 +450,35 @@ export default Plugin.define({
           if (type === "permission.asked") {
             const action = String(data?.action ?? "?")
             const resources = Array.isArray(data?.resources) ? data.resources.join(", ") : ""
-            const head = action === "question" ? "❓ Soru bekleniyor" : "⏳ Onay bekleniyor"
-            const lines = [head, `Eylem: ${esc(action)}`]
-            if (resources) lines.push(`Kaynak: ${esc(resources)}`)
+            const head = action === "question" ? "❓ Question waiting" : "⏳ Approval waiting"
+            const lines = [head, `Action: ${esc(action)}`]
+            if (resources) lines.push(`Resource: ${esc(resources)}`)
             if (data?.message) lines.push(esc(data.message))
-            lines.push(`Proje: ${esc(label)}`)
-            lines.push("", "⚠️ Bu istek OpenCode arayüzünde yanıtlanmalı.")
+            lines.push(`Project: ${esc(label)}`)
+            lines.push("", "⚠️ This request must be answered in the OpenCode UI.")
             message = lines.join("\n")
           } else if (isForm && form) {
             const fields = Array.isArray(form?.fields) ? form.fields : []
             const questions = fields
               .map((field: AnyRecord) => field?.title ?? field?.label ?? field?.header ?? field?.question)
               .filter(Boolean)
-            const lines = ["❓ Soru soruldu (cevap bekleniyor)"]
+            const lines = ["❓ Question asked (waiting for an answer)"]
             if (questions.length) lines.push(esc(questions.join("\n")))
-            lines.push(`Proje: ${esc(label)}`)
-            lines.push("", "⚠️ Bu soru OpenCode arayüzünde yanıtlanmalı.")
+            lines.push(`Project: ${esc(label)}`)
+            lines.push("", "⚠️ This question must be answered in the OpenCode UI.")
             message = lines.join("\n")
           } else if (type === "session.execution.succeeded") {
-            const lines = ["✅ Tur tamamlandı", `Proje: ${esc(label)}`]
+            const lines = ["✅ Turn complete", `Project: ${esc(label)}`]
             const excerpt = await lastAssistantExcerpt(sessionID)
             if (excerpt) lines.push("", esc(excerpt.slice(0, 4000)))
-            if (cfg.inbound) lines.push("", "↩️ Yeni prompt için bu mesaja yanıt yazın.")
+            if (cfg.inbound) lines.push("", "↩️ Reply to this message with a new prompt.")
             message = lines.join("\n")
           } else if (type === "session.execution.failed") {
             const error = data?.error
             const detail =
               typeof error === "string" ? error : (error?.message ?? JSON.stringify(error ?? ""))
-            message = `❌ Tur hata ile bitti\nProje: ${esc(label)}\n${esc(String(detail).slice(0, 2000))}`
-            if (cfg.inbound) message += "\n\n↩️ Devam etmek için bu mesaja yanıt yazın."
+            message = `❌ Turn failed\nProject: ${esc(label)}\n${esc(String(detail).slice(0, 2000))}`
+            if (cfg.inbound) message += "\n\n↩️ Reply to this message to continue."
           }
 
           if (!message) continue
@@ -553,7 +553,7 @@ export default Plugin.define({
       const target = resolveTarget(chatId, replyTo)
       const sessionID = target?.sessionID ? String(target.sessionID) : undefined
       if (!sessionID) {
-        await sendTelegram(cfg, "⚠️ Durdurulacak oturum bilinmiyor.")
+        await sendTelegram(cfg, "⚠️ I don't know which session to stop.")
         return
       }
       try {
@@ -561,11 +561,11 @@ export default Plugin.define({
         await sendTelegram(
           cfg,
           result?.interrupted === false
-            ? "ℹ️ Çalışan bir tur yok."
-            : `⏹️ Tur durduruldu → ${esc(target?.label ?? sessionID)}`,
+            ? "ℹ️ No turn is running."
+            : `⏹️ Turn stopped → ${esc(target?.label ?? sessionID)}`,
         )
       } catch (error) {
-        await sendTelegram(cfg, `❌ Durdurulamadı: ${esc(String((error as Error)?.message ?? error))}`)
+        await sendTelegram(cfg, `❌ Could not stop: ${esc(String((error as Error)?.message ?? error))}`)
       }
     }
 
@@ -583,7 +583,7 @@ export default Plugin.define({
       const replyTo = message?.reply_to_message?.message_id
       const text = typeof message.text === "string" ? message.text.trim() : ""
       if (!text) {
-        await sendTelegram(cfg, "ℹ️ Şu an yalnızca metin mesajları iletilir.")
+        await sendTelegram(cfg, "ℹ️ Only text messages are forwarded right now.")
         return
       }
 
@@ -596,12 +596,12 @@ export default Plugin.define({
         await sendTelegram(cfg, `Chat ID: <code>${esc(chatId)}</code>`)
         return
       }
-      if (command === "/stop" || command === "/dur") {
+      if (command === "/stop") {
         await handleStop(chatId, replyTo)
         return
       }
       if (text.startsWith("/")) {
-        await sendTelegram(cfg, "❔ Bilinmeyen komut. /help yazın.")
+        await sendTelegram(cfg, "❔ Unknown command. Send /help.")
         return
       }
 
@@ -610,12 +610,12 @@ export default Plugin.define({
       if (!sessionID) {
         await sendTelegram(
           cfg,
-          "⚠️ Hangi oturuma göndereceğimi bilmiyorum. Önce OpenCode'da bir tur başlatın (bu sohbete bildirim gelince buradan devam edebilirsiniz).",
+          "⚠️ I don't know which session to send this to. Start a turn in OpenCode first (once a notification arrives here, you can continue from this chat).",
         )
         return
       }
       if (!(await sessionInfo(sessionID))) {
-        await sendTelegram(cfg, "⚠️ O oturum artık yok. Önce OpenCode'da yeni bir tur başlatın.")
+        await sendTelegram(cfg, "⚠️ That session no longer exists. Start a new turn in OpenCode first.")
         return
       }
 
@@ -624,7 +624,7 @@ export default Plugin.define({
       } catch (error) {
         const detail = String((error as Error)?.message ?? error)
         debugLog({ at: new Date().toISOString(), inbound: "prompt failed", sessionID, detail })
-        await sendTelegram(cfg, `❌ Prompt iletilemedi: ${esc(detail.slice(0, 500))}`)
+        await sendTelegram(cfg, `❌ Prompt could not be delivered: ${esc(detail.slice(0, 500))}`)
         return
       }
 
@@ -633,7 +633,7 @@ export default Plugin.define({
       debugLog({ at: new Date().toISOString(), inbound: "prompt sent", sessionID, text })
       await sendTelegram(
         cfg,
-        `📨 İletildi → ${esc(label)}\n\n${esc(text.length > 300 ? `${text.slice(0, 300)}…` : text)}`,
+        `📨 Delivered → ${esc(label)}\n\n${esc(text.length > 300 ? `${text.slice(0, 300)}…` : text)}`,
       )
     }
 
@@ -682,7 +682,7 @@ export default Plugin.define({
             if (conflicts >= 3) {
               await sendTelegram(
                 cfg,
-                "⚠️ Bot'ta bir webhook tanımlı olduğu için mesajlar dinlenemiyor.\nTelegram'da webhook'u kaldırın (deleteWebhook), sonra OpenCode'u yeniden yükleyin.",
+                "⚠️ A webhook is set on the bot, so incoming messages cannot be read.\nRemove the webhook in Telegram (deleteWebhook), then reload OpenCode.",
               )
               pollController.abort()
               break
@@ -752,7 +752,7 @@ export default Plugin.define({
         name: "telegram-test",
         description: "Send a test notification to Telegram",
         execute: async () => {
-          await sendTelegram(cfg, "🔔 OpenCode test bildirimi — kurulum çalışıyor.")
+          await sendTelegram(cfg, "🔔 OpenCode test notification — the setup works.")
         },
       })
     })

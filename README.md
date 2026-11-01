@@ -1,78 +1,77 @@
 # telegram-notify
 
-> [OpenCode](https://opencode.ai) için iki yönlü Telegram köprüsü: turların sonucu
-> telefonuna düşer, Telegram'dan yazdığın mesaj oturumun yeni promptu olur.
+> A two-way [Telegram](https://telegram.org) bridge for [OpenCode](https://opencode.ai):
+> turn results land on your phone, and a message you send back becomes the session's
+> next prompt.
 
-Uzun bir işi başlatıp masadan kalkabilirsin. İş bitince (ya da hata verince) Telegram'dan
-haberin olur; cevabı oradan yazarak OpenCode'u kaldığın yerden devam ettirirsin.
-Eklenti global olarak yüklenir, açık olan her projede çalışır ve bildirimleri tek bir
-sohbete gönderir.
+Start a long task, then walk away from the desk. When the turn finishes — or fails — you
+hear about it on Telegram, and you can keep the agent going by replying right there. The
+plugin loads globally, so it works in every open project, and it sends everything to a
+single chat.
 
 ```
-✅ Tur tamamlandı
-Proje: telegram-notify — C:\Projects\telegram-notify
+✅ Turn complete
+Project: telegram-notify — C:\Projects\telegram-notify
 
-README eklendi, .gitignore ve LICENSE hazır. Sırada commit var.
+README written, .gitignore and LICENSE in place. Commit is next.
 
-↩️ Yeni prompt için bu mesaja yanıt yazın.
+↩️ Reply to this message with a new prompt.
 ```
 
-> Arayüz metinleri Türkçedir; kodu `src/index.ts` içinden değiştirebilirsin.
+## What it notifies you about
 
-## Neleri bildirir
-
-| Olay | Telegram'a giden |
+| Event | Sent to Telegram |
 | --- | --- |
-| `permission.asked` | ⏳ Onay bekleniyor / ❓ Soru bekleniyor — eylem, kaynak ve proje adı |
-| `form.created` | ❓ Soru soruldu — sorulan başlıklar ve proje adı |
-| `session.execution.succeeded` | ✅ Tur tamamlandı — son asistan yanıtının ilk 4000 karakteri |
-| `session.execution.failed` | ❌ Tur hata ile bitti — hata metni |
+| `permission.asked` | ⏳ Approval waiting / ❓ Question waiting — action, resource and project |
+| `form.created` | ❓ Question asked — the question titles and the project |
+| `session.execution.succeeded` | ✅ Turn complete — first 4000 characters of the last assistant reply |
+| `session.execution.failed` | ❌ Turn failed — the error text |
 
-Alt oturumların (sub-agent) turları bildirilmez, yalnızca üst seviye oturumlar haber verir.
-Uzun mesajlar 3900 karakterden bölünerek birden fazla Telegram mesajı olarak gider
-(üst sınır ~40.000 karakter).
+Sub-agent turns are internal and are not announced; only top-level sessions notify.
+Long messages are split at 3900 characters into multiple Telegram messages (capped at
+about 40,000 characters).
 
-## Telegram'dan OpenCode'a
+## From Telegram back to OpenCode
 
-| Yaptığın | Sonuç |
+| What you do | Result |
 | --- | --- |
-| Bir bildirime **yanıt** yazmak | O bildirimi gönderen oturuma prompt olarak gider |
-| **Normal** mesaj | En son bildirim gönderen oturuma gider |
-| `/stop` · `/dur` | Çalışan turu durdurur |
-| `/id` | Bu sohbetin chat id'sini söyler |
-| `/help` · `/start` | Kısa kullanım özeti |
-| Diğer `/komut` | Bilinmeyen komut uyarısı |
+| **Reply** to a notification | Becomes a prompt for the session that sent it |
+| Send a **plain** message | Goes to the session that notified last |
+| `/stop` | Interrupts the running turn |
+| `/id` | Tells you this chat's id |
+| `/help` · `/start` | Short usage summary |
+| Any other `/command` | "Unknown command" notice |
 
-Her iletilen prompt için Telegram'da `📨 İletildi → <oturum>` onayı gelir. Oturum artık
-yoksa ya da bilinmiyorsa eklenti bunu söyler; sessizce yutmaz.
+Every delivered prompt is confirmed with `📨 Delivered → <session>`. If the session is
+gone or unknown, the plugin says so instead of swallowing the message.
 
-## Kurulum
+## Install
 
-### 1. Bir bot oluştur
+### 1. Create a bot
 
-1. Telegram'da [@BotFather](https://t.me/BotFather) → `/newbot` → **token**'ı not al.
-2. Bota **bir kez sen mesaj at** — botlar sohbeti kendiliğinden başlatamaz.
-3. Chat id'ni öğren: [@userinfobot](https://t.me/userinfobot) gibi bir bota yaz, ya da
-   `https://api.telegram.org/bot<TOKEN>/getUpdates` çıktısındaki `message.chat.id`.
-4. Bot'ta webhook **olmamalı** (eklenti `getUpdates` ile uzun polling yapar):
+1. In Telegram, open [@BotFather](https://t.me/BotFather) → `/newbot` → note the **token**.
+2. **Send the bot one message yourself** — bots cannot start a chat on their own.
+3. Find your chat id: message a bot such as [@userinfobot](https://t.me/userinfobot), or
+   read `message.chat.id` from `https://api.telegram.org/bot<TOKEN>/getUpdates`.
+4. The bot must have **no webhook** (the plugin long-polls with `getUpdates`):
 
    ```sh
    curl "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
    ```
 
-### 2. Eklentiyi ekle
+### 2. Add the plugin
 
 ```sh
 opencode plugin add github:olcanaskar/telegram-notify
 ```
 
-Ya da elle: bu depoyu `~/.config/opencode/plugins/telegram-notify/` altına kopyala
-(Windows'ta `%USERPROFILE%\.config\opencode\plugins\telegram-notify\`), içinde
-`index.ts` bulunsun.
+Or manually: copy this repository to `~/.config/opencode/plugins/telegram-notify/`
+(on Windows `%USERPROFILE%\.config\opencode\plugins\telegram-notify\`) so that it
+contains `index.ts`.
 
-### 3. Yapılandır
+### 3. Configure
 
-`~/.config/opencode/telegram-notify.json` dosyasını oluştur:
+Create `~/.config/opencode/telegram-notify.json`:
 
 ```json
 {
@@ -90,91 +89,93 @@ Ya da elle: bu depoyu `~/.config/opencode/plugins/telegram-notify/` altına kopy
 }
 ```
 
-Hazır şablon: [`telegram-notify.example.json`](telegram-notify.example.json)
+A ready-made template lives in [`telegram-notify.example.json`](telegram-notify.example.json).
 
-### 4. Dene
+### 4. Test
 
-OpenCode'u yeniden başlat, sonra:
+Restart OpenCode, then run:
 
 ```
 /telegram-test
 ```
 
-Telegram'a `🔔 OpenCode test bildirimi — kurulum çalışıyor.` düşerse hazırsın.
+If `🔔 OpenCode test notification — the setup works.` shows up on Telegram, you are done.
 
-## Yapılandırma
+## Configuration
 
-Ayarlar üç yerden okunur, **önce gelen kazanır**:
+Settings are read from three places, **first match wins**:
 
-1. `opencode.json` içindeki eklenti seçenekleri (`botToken`, `chatId`, `inbound`)
-2. Ortam değişkenleri: `OPENCODE_TELEGRAM_BOT_TOKEN`, `OPENCODE_TELEGRAM_CHAT_ID`
+1. plugin options in `opencode.json` (`botToken`, `chatId`, `inbound`)
+2. environment variables: `OPENCODE_TELEGRAM_BOT_TOKEN`, `OPENCODE_TELEGRAM_CHAT_ID`
 3. `~/.config/opencode/telegram-notify.json`
 
-| Alan | Varsayılan | Açıklama |
+| Field | Default | Meaning |
 | --- | --- | --- |
-| `botToken` | — | **Zorunlu.** BotFather token'ı |
-| `chatId` | — | **Zorunlu.** Bildirimlerin gideceği tek sohbet; başka sohbetler yok sayılır |
-| `notify.input` | `true` | Onay/soru bekleyen istekleri bildir |
-| `notify.done` | `true` | Tamamlanan turları bildir |
-| `notify.error` | `true` | Hatalı turları bildir |
-| `inbound.enabled` | `true` | Telegram'dan gelen mesajları prompt olarak kabul et |
-| `debug` | `false` | `telegram-notify-debug.log` dosyasına ayrıntılı kayıt yaz |
+| `botToken` | — | **Required.** Token from BotFather |
+| `chatId` | — | **Required.** The single chat to notify; other chats are ignored |
+| `notify.input` | `true` | Announce requests waiting for approval or an answer |
+| `notify.done` | `true` | Announce finished turns |
+| `notify.error` | `true` | Announce failed turns |
+| `inbound.enabled` | `true` | Accept incoming Telegram messages as prompts |
+| `debug` | `false` | Write details to `telegram-notify-debug.log` |
 
-`botToken` ya da `chatId` yoksa eklenti sessizce devre dışı kalır ve konsola tek satır
-uyarı yazar; OpenCode'un açılmasını engellemez.
+Without `botToken` or `chatId` the plugin disables itself silently and logs one warning
+line to the console; it never blocks OpenCode from starting.
 
-## Nasıl çalışır
+## How it works
 
-Global eklenti her yüklü konum için bir kez örneklenir ve her örnek **her** sunucu
-olayını alır. İki mekanizma bunu tek bir akışa indirir:
+A global plugin is instantiated once per loaded location, and every instance receives
+every server event. Two mechanisms collapse that into a single stream:
 
-- **Tek gönderim:** her olay kimliği için `wx` (özel oluşturma) ile kilit dosyası alınır;
-  yarışı kazanan tek örnek mesajı gönderir.
-- **Tek polling:** `telegram-notify-poll.lock` içinde pid + token + zaman damgası tutulur
-  ve 30 saniyede bir tazelenir. Kilit sahibi ölürse (90 saniye bayat) başka bir örnek
-  devralır.
+- **One sender.** Each event id is claimed with an exclusive `wx` lock file, so the
+  instance that wins the race is the only one that sends a message.
+- **One poller.** `telegram-notify-poll.lock` holds a pid, a token and a timestamp,
+  refreshed every 30 seconds. If the owner dies (90 seconds stale), another instance
+  takes over.
 
-Diğer ayrıntılar:
+Other details:
 
-- `getUpdates` offset'i diske yazılır, böylece her güncelleme **tam bir kez** işlenir.
-- İlk açılışta geçmişin yalnızca son 20 güncellemesi okunur ve **15 dakikadan yeni**
-  olanlar teslim edilir; eski bir birikim taze prompt gibi tekrar oynatılmaz.
-- Bildirim ↔ oturum eşlemesi Telegram `message_id`'si üzerinden tutulur, yani günler
-  sonra bir bildirime yanıt yazsan bile doğru oturuma gider (7 gün saklanır).
-- Bağlantı koparsa 5 saniye bekleyip yeniden dener; webhook çakışması (HTTP 409)
-  üç kez üst üste gelirse durur ve Telegram'dan webhook'u kaldırmanı söyler.
+- The `getUpdates` offset is persisted to disk, so every update is processed **exactly
+  once**.
+- On first start only the last 20 updates are read, and only those **newer than 15
+  minutes** are delivered, so a stale backlog is never replayed as fresh prompts.
+- Notifications are mapped to sessions through the Telegram `message_id`, so a reply
+  written days later still reaches the right session (kept for 7 days).
+- A dropped connection retries after 5 seconds; three consecutive webhook conflicts
+  (HTTP 409) stop the poller and tell you to remove the webhook.
 
-### Diske yazılanlar
+### What gets written to disk
 
-Hepsi `~/.config/opencode/` altında:
+All under `~/.config/opencode/`:
 
-| Yol | İçerik |
+| Path | Contents |
 | --- | --- |
-| `telegram-notify.json` | Ayarlar (token burada) |
-| `telegram-notify-offset.json` | Son işlenen `update_id` |
-| `telegram-notify-poll.lock` | Aktif polling sahibi |
-| `telegram-notify-seen/` | Gönderilmiş olay kimlikleri (2 gün) |
-| `telegram-notify-routes/` | `message_id` → oturum eşlemesi (7 gün) |
-| `telegram-notify-last/` | Sohbet başına son bildiren oturum |
-| `telegram-notify-debug.log` | `debug: true` iken kayıt (512 KB'ta sıfırlanır) |
+| `telegram-notify.json` | Settings (holds the token) |
+| `telegram-notify-offset.json` | Last processed `update_id` |
+| `telegram-notify-poll.lock` | Owner of the active poller |
+| `telegram-notify-seen/` | Event ids already sent (2 days) |
+| `telegram-notify-routes/` | `message_id` → session mapping (7 days) |
+| `telegram-notify-last/` | Last notifying session per chat |
+| `telegram-notify-debug.log` | Log while `debug: true` (reset at 512 KB) |
 
-## Sınırlar
+## Limits
 
-- **Tek sohbet.** `chatId` dışındaki sohbetler yok sayılır; ekip/çok kullanıcı desteği yok.
-- **Yalnızca metin.** Fotoğraf, dosya, ses iletildiğinde eklenti bunu söyler.
-- **Onay ve sorular Telegram'dan yanıtlanamaz.** Bildirimi görürsün ama kararı OpenCode
-  arayüzünde vermen gerekir; eklenti bunu mesajın altına yazar.
-- **Webhook kullanılmaz.** Bot'ta webhook tanımlıysa polling çalışmaz.
-- OAuth/`fetch` nedeniyle **Node 18+** gerekir.
+- **One chat.** Chats other than `chatId` are ignored; there is no team or multi-user
+  support.
+- **Text only.** Photos, files and voice notes are answered with a notice.
+- **Approvals and questions cannot be answered from Telegram.** You see the notification,
+  but the decision must be made in the OpenCode UI; the message says so.
+- **No webhooks.** Polling does not work while the bot has a webhook configured.
+- **Node 18+** is required because of the OAuth/`fetch` usage.
 
-## Güvenlik
+## Security
 
-- `botToken` bir paroladır: botunu ele geçiren herkes mesajlarını okur ve senin adına
-  prompt gönderebilir. Token'ı repoya **koyma** — `.gitignore` bunu engeller.
-- `chatId` senin kullanıcı kimliğindir; token ile birlikte paylaşma.
-- Bot, gelen mesajı yalnızca `chatId` eşleşirse işler; yine de token sızarsa hemen
-  BotFather'dan `/revoke` ile yenile.
+- `botToken` is a password: anyone who has it can read your messages and send prompts as
+  you. Never commit it — `.gitignore` already excludes the file that holds it.
+- `chatId` is your user id; do not share it together with the token.
+- Incoming messages are only handled when the chat matches `chatId`, but if the token
+  leaks, revoke it immediately with `/revoke` in BotFather.
 
-## Lisans
+## License
 
 [MIT](LICENSE)
